@@ -23,7 +23,6 @@ msi.com
 akamaitechnologies.com
 2ip.ru
 yandex.ru
-dnevnik.egov66.ru
 odnoklassniki.ru
 ok.ru
 max.ru
@@ -32,3 +31,4 @@ platform-api.max.ru
 dev.max.ru
 st.max.ru
 download.max.ru
+
