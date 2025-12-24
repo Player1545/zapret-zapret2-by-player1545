@@ -1,5 +1,5 @@
 # zapret+zapret2-by-player1545
-Решение создано на базе репозитория https://github.com/Flowseal/zapret-discord-youtube а так же на базе https://github.com/bol-van/zapret-win-bundle (если быть точнее, на базе winws2)
+Решение создано на базе репозитория https://github.com/Flowseal/zapret-discord-youtube, а так же на базе https://github.com/bol-van/zapret-win-bundle (если быть точнее, на базе winws2)
 <br>
 <br>
 Отдельная благодарность <a href="https://github.com/Flowseal">Flowseal</a> и <a href="https://github.com/bol-van">bol-van</a>.
