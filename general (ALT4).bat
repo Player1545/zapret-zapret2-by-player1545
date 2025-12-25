@@ -27,16 +27,17 @@ start "zapret2: %~n0" /min "%BIN%winws2.exe" --debug=0 --wf-tcp-out=80,443,2053,
 --blob=tls_google:@"%BIN%tls_clienthello_www_google_com.bin" ^
 --blob=tls_4pda:@"%BIN%tls_clienthello_4pda_to.bin" ^
 
---filter-udp=443 --filter-l7=quic --hostlist="%LISTS%list-general.txt" --hostlist-exclude="%LISTS%list-exclude.txt" --ipset-exclude="%LISTS%ipset-exclude.txt" --lua-desync=fake:blob=fake_default_quic:repeats=8:ip_ttl=5 --new ^
+--filter-udp=443 --filter-l7=quic --hostlist="%LISTS%list-general.txt" --hostlist-exclude="%LISTS%list-exclude.txt" --ipset-exclude="%LISTS%ipset-exclude.txt" --lua-desync=udplen:increment=8:min=50 --new ^
 --filter-tcp=443 --filter-l7=tls,http --hostlist="%LISTS%list-google.txt" --lua-desync=multisplit:pos=1:seqovl=681:seqovl_pattern=tls_google --new ^
---filter-udp=19294-19344,50000-50100 --filter-l7=discord,stun --payload=stun,discord_ip_discovery --lua-desync=fake:blob=0x00000000000000000000000000000000:repeats=8:ip_ttl=5 --new ^
---filter-tcp=2053,2083,2087,2096,8443 --filter-l7=tls,http --hostlist-domains=discord.media --lua-desync=multisplit:pos=1:seqovl=568:seqovl_pattern=tls_google --new ^
+--filter-udp=19294-19344,50000-50100 --filter-l7=discord,stun --payload=stun,discord_ip_discovery --lua-desync=udplen:increment=8:min=85 --new ^
+--filter-tcp=2053,2083,2087,2096,8443 --filter-l7=tls,http --hostlist-domains=discord.media --lua-desync=multisplit:pos=1:seqovl=681:seqovl_pattern=tls_google --new ^
 --filter-tcp=80,443 --filter-l7=tls,http --hostlist="%LISTS%list-general.txt" --hostlist-exclude="%LISTS%list-exclude.txt" --ipset-exclude="%LISTS%ipset-exclude.txt" --lua-desync=multisplit:pos=1:seqovl=681:seqovl_pattern=tls_google --new ^
---filter-udp=443 --filter-l7=quic --ipset="%LISTS%ipset-all.txt" --hostlist-exclude="%LISTS%list-exclude.txt" --ipset-exclude="%LISTS%ipset-exclude.txt" --lua-desync=fake:blob=fake_default_quic:repeats=8:ip_ttl=5 --new ^
---filter-udp=443 --filter-l7=quic --hostlist="%LISTS%list-telegram.txt" --hostlist-exclude="%LISTS%list-exclude.txt" --ipset-exclude="%LISTS%ipset-exclude.txt" --lua-desync=fake:blob=fake_default_quic:repeats=11 --new ^
---filter-udp=443 --filter-l7=quic --ipset="%LISTS%ipset-telegram.txt" --hostlist-exclude="%LISTS%list-exclude.txt" --ipset-exclude="%LISTS%ipset-exclude.txt" --lua-desync=fake:blob=fake_default_quic:repeats=11 --new ^
+--filter-udp=443 --filter-l7=quic --ipset="%LISTS%ipset-all.txt" --hostlist-exclude="%LISTS%list-exclude.txt" --ipset-exclude="%LISTS%ipset-exclude.txt" --lua-desync=fake:blob=udplen:increment=8:min=50 --new ^
+--filter-udp=443 --filter-l7=quic --hostlist="%LISTS%list-telegram.txt" --hostlist-exclude="%LISTS%list-exclude.txt" --ipset-exclude="%LISTS%ipset-exclude.txt" --lua-desync=fake:udplen:increment=8:min=50 --new ^
+--filter-udp=443 --filter-l7=quic --ipset="%LISTS%ipset-telegram.txt" --hostlist-exclude="%LISTS%list-exclude.txt" --ipset-exclude="%LISTS%ipset-exclude.txt" --lua-desync=fake:blob=0x00000000000000000000000000000000:repeats=11:ip_ttl=7 --new ^
 --filter-tcp=80,443 --filter-l7=tls,http --hostlist="%LISTS%list-telegram.txt" --hostlist-exclude="%LISTS%list-exclude.txt" --ipset-exclude="%LISTS%ipset-exclude.txt" --lua-desync=multisplit:pos=1:seqovl=681:seqovl_pattern=tls_google --new ^
 --filter-tcp=80,443 --filter-l7=tls,http --ipset="%LISTS%ipset-telegram.txt" --hostlist-exclude="%LISTS%list-exclude.txt" --ipset-exclude="%LISTS%ipset-exclude.txt" --lua-desync=multisplit:pos=1:seqovl=681:seqovl_pattern=tls_google --new ^
 --filter-udp=590-1400,3478,32000-32010,49224,50000-50100 --filter-l7=stun --ipset="%LISTS%ipset-telegram.txt" --payload=stun --lua-desync=fake:blob=0x00000000000000000000000000000000:repeats=11:ip_ttl=7 --new ^
---filter-udp=* --filter-l7=mtproto --payload=all --lua-desync=fake:blob=0x00000000000000000000000000000000:repeats=11:ip_ttl=7 --new ^
+--filter-udp=* --filter-l7=mtproto --payload=all --lua-desync=udplen:increment=8:min=50 --new ^
 --filter-tcp=* --filter-l7=mtproto --payload=all --lua-desync=multisplit:pos=1:seqovl=681:seqovl_pattern=tls_google --new ^
+::На 37 и 40 строке лучше не менять метод десинхронизации, т.к. звонки в телеграме перестают работать

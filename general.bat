@@ -37,4 +37,6 @@ start "zapret2: %~n0" /min "%BIN%winws2.exe" --debug=0 --wf-tcp-out=80,443,2053,
 --filter-udp=443 --filter-l7=quic --ipset="%LISTS%ipset-telegram.txt" --hostlist-exclude="%LISTS%list-exclude.txt" --ipset-exclude="%LISTS%ipset-exclude.txt" --lua-desync=fake:blob=fake_default_quic:repeats=11 --new ^
 --filter-tcp=80,443 --filter-l7=tls,http --hostlist="%LISTS%list-telegram.txt" --hostlist-exclude="%LISTS%list-exclude.txt" --ipset-exclude="%LISTS%ipset-exclude.txt" --lua-desync=multisplit:pos=1:seqovl=681:seqovl_pattern=tls_google --new ^
 --filter-tcp=80,443 --filter-l7=tls,http --ipset="%LISTS%ipset-telegram.txt" --hostlist-exclude="%LISTS%list-exclude.txt" --ipset-exclude="%LISTS%ipset-exclude.txt" --lua-desync=multisplit:pos=1:seqovl=681:seqovl_pattern=tls_google --new ^
---filter-udp=590-1400,3478,32000-32010,49224,50000-50100 --filter-l7=stun,mtproto --ipset="%LISTS%ipset-telegram.txt" --payload=stun,mtproto_initial --lua-desync=fake:blob=0x00000000000000000000000000000000:repeats=11 --new ^
+--filter-udp=590-1400,3478,32000-32010,49224,50000-50100 --filter-l7=stun --ipset="%LISTS%ipset-telegram.txt" --payload=stun --lua-desync=fake:blob=0x00000000000000000000000000000000:repeats=11:ip_ttl=7 --new ^
+--filter-udp=* --filter-l7=mtproto --payload=all --lua-desync=fake:blob=0x00000000000000000000000000000000:repeats=11:ip_ttl=7 --new ^
+--filter-tcp=* --filter-l7=mtproto --payload=all --lua-desync=multisplit:pos=1:seqovl=681:seqovl_pattern=tls_google --new ^
