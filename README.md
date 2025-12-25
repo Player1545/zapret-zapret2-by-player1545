@@ -12,6 +12,7 @@
 <p>Уточнение: программы winws и winws2 - это главные компоненты и они не несут в себе вредоносного кода. Если вы мне не верите, репозитории данных программ с открытым исходным кодом всегда доступны - <a href="https://github.com/bol-van/zapret">zapret</a>, <a href="https://github.com/bol-van/zapret2">zapret2</a>.</p>
 <p>Второе уточнение: Вы не сможете через service.bat установить zapret как сервис. Подробнее читайте здесь: <a href="https://github.com/Player1545/zapret-zapret2-by-player1545?tab=readme-ov-file#%D0%BF%D1%80%D0%BE-servicebat">Про service.bat</a></p>
 <p>Третье уточнение: по умолчанию у вас будет включен Game Filter. Если он вам не нужен, вы можете выключить его через service.bat, прописав цифру 6.</p>
+<p><b>Если у вас не работают звонки в дискорде, читайте решение здесь - </b><a href="https://github.com/Player1545/zapret-zapret2-by-player1545#%D1%87%D1%82%D0%BE-%D0%B4%D0%B5%D0%BB%D0%B0%D1%82%D1%8C-%D1%81-%D0%BD%D0%B5%D1%80%D0%B0%D0%B1%D0%BE%D1%82%D0%B0%D1%8E%D1%89%D0%B8%D0%BC%D0%B8-%D0%B7%D0%B2%D0%BE%D0%BD%D0%BA%D0%B0%D0%BC%D0%B8-%D0%B2-discord">Что делать с неработающими звонками в discord?</a>. <b>Если данное решение вам не помогло - рекомендую использовать Cloudflare Warp или Внезапный Переезд в Нидерладны</b>.</p>
 <br>
 <hr>
 <h2>Зачем это нужно?</h2>
