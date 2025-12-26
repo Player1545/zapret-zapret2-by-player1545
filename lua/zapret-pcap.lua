@@ -6,7 +6,6 @@ function pcap_write_packet(file, raw)
 	local sec, nsec = clock_gettime();
 	file:write(bu32(sec)..bu32(nsec)..bu32(#raw)..bu32(#raw))
 	file:write(raw)
-	file:close()
 end
 function pcap_write(file, raw)
 	local pos = file:seek()
@@ -36,4 +35,5 @@ function pcap(ctx, desync)
 		error("pcap: could not write to '".._G[fn_cache_name].."'")
 	end
 	pcap_write(f, raw_packet(ctx))
+	f:close()
 end

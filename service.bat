@@ -44,24 +44,22 @@ echo =========  v!LOCAL_VERSION!  =========
 echo 1. Install Service - unavailable yet
 echo 2. Remove Services
 echo 3. Check Status
-echo 4. Run Diagnostics - unavailable yet
+echo 4. Run Diagnostics
 echo 5. Check Updates
 echo 6. Switch Game Filter (%GameFilterStatus%)
 echo 7. Switch ipset (%IPsetStatus%)
 echo 8. Update ipset list
-echo 9. Run Tests
 echo 0. Exit
 set /p menu_choice=Enter choice (0-8): 
 
 ::if "%menu_choice%"=="1" goto service_install
 if "%menu_choice%"=="2" goto service_remove
 if "%menu_choice%"=="3" goto service_status
-::if "%menu_choice%"=="4" goto service_diagnostics
+if "%menu_choice%"=="4" goto service_diagnostics
 if "%menu_choice%"=="5" goto service_check_updates
 if "%menu_choice%"=="6" goto game_switch
 if "%menu_choice%"=="7" goto ipset_switch
 if "%menu_choice%"=="8" goto ipset_update
-if "%menu_choice%"=="9" goto run_tests
 if "%menu_choice%"=="0" exit /b
 goto menu
 
@@ -305,9 +303,9 @@ chcp 437 > nul
 cls
 
 :: Set current version and URLs
-set "GITHUB_VERSION_URL=https://raw.githubusercontent.com/Flowseal/zapret-discord-youtube/main/.service/version.txt"
-set "GITHUB_RELEASE_URL=https://github.com/Flowseal/zapret-discord-youtube/releases/tag/"
-set "GITHUB_DOWNLOAD_URL=https://github.com/Flowseal/zapret-discord-youtube/releases/latest/download/zapret-discord-youtube-"
+set "GITHUB_VERSION_URL=https://raw.githubusercontent.com/Player1545/zapret-zapret2-by-player1545/main/.service/version.txt"
+set "GITHUB_RELEASE_URL=https://github.com/Player1545/zapret-zapret2-by-player1545/releases/tag/"
+set "GITHUB_DOWNLOAD_URL=https://github.com/Player1545/zapret-zapret2-by-player1545/releases/latest/download/zapret-zapret2-by-player1545-"
 
 :: Get the latest version from GitHub
 for /f "delims=" %%A in ('powershell -command "(Invoke-WebRequest -Uri \"%GITHUB_VERSION_URL%\" -Headers @{\"Cache-Control\"=\"no-cache\"} -TimeoutSec 5).Content.Trim()" 2^>nul') do set "GITHUB_VERSION=%%A"
@@ -346,28 +344,6 @@ if /i "%CHOICE%"=="Y" (
 if "%1"=="soft" exit 
 pause
 goto menu
-
-:: RUN TESTS =============================
-:run_tests
-chcp 65001 >nul
-cls
-
-:: Require PowerShell 2.0+
-powershell -NoProfile -Command "if ($PSVersionTable -and $PSVersionTable.PSVersion -and $PSVersionTable.PSVersion.Major -ge 2) { exit 0 } else { exit 1 }" >nul 2>&1
-if %errorLevel% neq 0 (
-    echo PowerShell 2.0 or newer is required.
-    echo Please upgrade PowerShell and rerun this script.
-    echo.
-    pause
-    goto menu
-)
-
-echo Starting configuration tests in PowerShell window...
-echo.
-start "" powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0utils\test zapret.ps1"
-pause
-goto menu
-
 
 :: DIAGNOSTICS =========================
 :service_diagnostics
@@ -507,6 +483,9 @@ echo:
 tasklist /FI "IMAGENAME eq winws.exe" | find /I "winws.exe" > nul
 set "winws_running=!errorlevel!"
 
+tasklist /FI "IMAGENAME eq winws2.exe" | find /I "winws2.exe" > nul
+set "winws2_running=!errorlevel!"
+
 sc query "WinDivert" | findstr /I "RUNNING STOP_PENDING" > nul
 set "windivert_running=!errorlevel!"
 
@@ -559,7 +538,7 @@ if !winws_running! neq 0 if !windivert_running!==0 (
 )
 
 :: Conflicting bypasses
-set "conflicting_services=GoodbyeDPI discordfix_zapret winws1 winws2"
+set "conflicting_services=GoodbyeDPI discordfix_zapret winws1"
 set "found_any_conflict=0"
 set "found_conflicts="
 
@@ -750,7 +729,7 @@ chcp 437 > nul
 cls
 
 set "listFile=%~dp0lists\ipset-all.txt"
-set "url=https://raw.githubusercontent.com/Flowseal/zapret-discord-youtube/refs/heads/main/.service/ipset-service.txt"
+set "url=https://raw.githubusercontent.com/Player1545/zapret-zapret2-by-player1545/refs/heads/main/.service/ipset-service.txt"
 
 echo Updating ipset-all...
 

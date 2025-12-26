@@ -762,6 +762,22 @@ function fix_ip6_next(ip6, last_proto)
 	end
 end
 
+-- reverses ip addresses, ports and seq/ack
+function dis_reverse(dis)
+	if dis.ip then
+		dis.ip.ip_src, dis.ip.ip_dst = dis.ip.ip_dst, dis.ip.ip_src
+	end
+	if dis.ip6 then
+		dis.ip6.ip6_src, dis.ip6.ip6_dst = dis.ip6.ip6_dst, dis.ip6.ip6_src
+	end
+	if dis.tcp then
+		dis.tcp.th_sport, dis.tcp.th_dport = dis.tcp.th_dport, dis.tcp.th_sport
+		dis.tcp.th_ack, dis.tcp.th_seq = dis.tcp.th_seq, dis.tcp.th_ack
+	end
+	if dis.udp then
+		dis.udp.uh_sport, dis.udp.uh_dport = dis.udp.uh_dport, dis.udp.uh_sport
+	end
+end
 
 -- parse autottl : delta,min-max
 function parse_autottl(s)
@@ -1300,7 +1316,7 @@ function wsize_rewrite(dis, arg)
 	local b = false
 	if arg.wsize then
 		local wsize = tonumber(arg.wsize)
-		DLOG("window size "..dis.tcp.th_win.." => "..wsize)
+		DLOG("wsize_rewrite: window size "..dis.tcp.th_win.." => "..wsize)
 		dis.tcp.th_win = tonumber(arg.wsize)
 		b = true
 	end
@@ -1310,9 +1326,9 @@ function wsize_rewrite(dis, arg)
 		if i then
 			local oldscale = u8(dis.tcp.options[i].data)
 			if scale>oldscale then
-				DLOG("not increasing scale factor")
+				DLOG("wsize_rewrite: not increasing scale factor")
 			elseif scale<oldscale then
-				DLOG("scale factor "..oldscale.." => "..scale)
+				DLOG("wsize_rewrite: scale factor "..oldscale.." => "..scale)
 				dis.tcp.options[i].data = bu8(scale)
 				b = true
 			end
