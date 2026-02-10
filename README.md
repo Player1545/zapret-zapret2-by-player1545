@@ -4,7 +4,7 @@
 <br>
 Отдельная благодарность <a href="https://github.com/Flowseal">Flowseal</a> и <a href="https://github.com/bol-van">bol-van</a>.
 <br>
-<p><b>По поводу замедления телеграм - </b>https://github.com/Player1545/zapret-zapret2-by-player1545#%D0%BF%D1%80%D0%BE-%D1%82%D0%B5%D0%BB%D0%B5%D0%B3%D1%80%D0%B0%D0%BC</p>
+<p><b>По поводу замедления телеграм - читаете в самом низу README</b></p>
 <br>
 <hr>
 <h2>Как запускать?</h2>
