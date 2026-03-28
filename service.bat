@@ -1,5 +1,5 @@
 @echo off
-set "LOCAL_VERSION=1.3.1"
+set "LOCAL_VERSION=1.4"
 
 :: External commands
 if "%~1"=="status_zapret" (
@@ -9,11 +9,16 @@ if "%~1"=="status_zapret" (
 )
 
 if "%~1"=="check_updates" (
-    if not "%~2"=="soft" (
-        start /b service check_updates soft
-    ) else (
-        call :service_check_updates soft
+    if defined NO_UPDATE_CHECK exit /b
+
+    if exist "%~dp0utils\check_updates.enabled" (
+        if not "%~2"=="soft" (
+            start /b service check_updates soft
+        ) else (
+            call :service_check_updates soft
+        )
     )
+
     exit /b
 )
 
@@ -22,12 +27,26 @@ if "%~1"=="load_game_filter" (
     exit /b
 )
 
+if "%~1"=="load_user_lists" (
+    call :load_user_lists
+    exit /b
+)
 
 if "%1"=="admin" (
+    call :check_command chcp
+    call :check_command find
+    call :check_command findstr
+    call :check_command netsh
+    
+    call :load_user_lists
+
     echo Started with admin rights
 ) else (
+    call :check_extracted
+    call :check_command powershell
+
     echo Requesting admin rights...
-    powershell -Command "Start-Process 'cmd.exe' -ArgumentList '/c \"\"%~f0\" admin\"' -Verb RunAs"
+    powershell -NoProfile -Command "Start-Process 'cmd.exe' -ArgumentList '/c \"\"%~f0\" admin\"' -Verb RunAs"
     exit
 )
 
@@ -38,32 +57,69 @@ setlocal EnableDelayedExpansion
 cls
 call :ipset_switch_status
 call :game_switch_status
+call :check_updates_switch_status
 
 set "menu_choice=null"
-echo =========  v!LOCAL_VERSION!  =========
-echo 1. Install Service - unavailable yet
-echo 2. Remove Services
-echo 3. Check Status
-echo 4. Run Diagnostics
-echo 5. Check Updates
-echo 6. Switch Game Filter (%GameFilterStatus%)
-echo 7. Switch ipset (%IPsetStatus%)
-echo 8. Update ipset list
-echo 9. Update Hosts file
-echo 0. Exit
-set /p menu_choice=Enter choice (0-8): 
 
-::if "%menu_choice%"=="1" goto service_install
+echo.
+echo   ZAPRET2 SERVICE MANAGER v!LOCAL_VERSION!
+echo   ----------------------------------------
+echo.
+echo   :: SERVICE
+echo      1. Create startup shortcut
+echo      2. Remove startup shortcut
+echo      3. Check Status
+echo.
+echo   :: SETTINGS
+echo      4. Game Filter         [!GameFilterStatus!]
+echo      5. IPSet Filter        [!IPsetStatus!]
+echo      6. Auto-Update Check   [!CheckUpdatesStatus!]
+echo.
+echo   :: UPDATES
+echo      7. Update IPSet List
+echo      8. Update Hosts File
+echo      9. Check for Updates
+echo.
+echo   :: TOOLS
+echo      10. Run Diagnostics
+echo      11. Run Tests
+echo.
+echo   ----------------------------------------
+echo      0. Exit
+echo.
+
+set /p menu_choice=   Select option (0-11): 
+
+if "%menu_choice%"=="1" goto service_install
 if "%menu_choice%"=="2" goto service_remove
 if "%menu_choice%"=="3" goto service_status
-if "%menu_choice%"=="4" goto service_diagnostics
-if "%menu_choice%"=="5" goto service_check_updates
-if "%menu_choice%"=="6" goto game_switch
-if "%menu_choice%"=="7" goto ipset_switch
-if "%menu_choice%"=="8" goto ipset_update
-if "%menu_choice%"=="9" goto hosts_update
+if "%menu_choice%"=="4" goto game_switch
+if "%menu_choice%"=="5" goto ipset_switch
+if "%menu_choice%"=="6" goto check_updates_switch
+if "%menu_choice%"=="7" goto ipset_update
+if "%menu_choice%"=="8" goto hosts_update
+if "%menu_choice%"=="9" goto service_check_updates
+if "%menu_choice%"=="10" goto service_diagnostics
+if "%menu_choice%"=="11" goto run_tests
 if "%menu_choice%"=="0" exit /b
 goto menu
+
+
+:: LOAD USER LISTS =====================
+:load_user_lists
+set "LISTS_PATH=%~dp0lists\"
+
+if not exist "%LISTS_PATH%ipset-exclude-user.txt" (
+    echo 203.0.113.113/32>"%LISTS_PATH%ipset-exclude-user.txt"
+)
+if not exist "%LISTS_PATH%list-general-user.txt" (
+    echo domain.example.abc>"%LISTS_PATH%list-general-user.txt"
+)
+if not exist "%LISTS_PATH%list-exclude-user.txt" (
+    echo domain.example.abc>"%LISTS_PATH%list-exclude-user.txt"
+)
+
+exit /b
 
 
 :: TCP ENABLE ==========================
@@ -77,23 +133,58 @@ exit /b
 cls
 chcp 437 > nul
 
-sc query "zapret" >nul 2>&1
-if !errorlevel!==0 (
-    for /f "tokens=2*" %%A in ('reg query "HKLM\System\CurrentControlSet\Services\zapret" /v zapret-discord-youtube 2^>nul') do echo Service strategy installed from "%%B"
+:: Get Startup folder path
+for %%A in ("%APPDATA%") do set "STARTUP_PATH=%%~A\Microsoft\Windows\Start Menu\Programs\Startup"
+set "shortcutName=Zapret2_Startup.lnk"
+set "shortcutPath=!STARTUP_PATH!\!shortcutName!"
+
+:: Check startup shortcut
+if exist "!shortcutPath!" (
+    call :PrintGreen "[OK] Startup shortcut found"
+    echo Shortcut location: !shortcutPath!
+    
+    :: Try to get target of shortcut using PowerShell
+    for /f "delims=" %%T in ('powershell -NoProfile -Command "$shell = New-Object -ComObject WScript.Shell; $shortcut = $shell.CreateShortcut('!shortcutPath!'); Write-Output $shortcut.TargetPath" 2^>nul') do (
+        echo Shortcut target: %%T
+    )
+    
+    :: Get config name from registry
+    for /f "tokens=2*" %%A in ('reg query "HKLM\System\CurrentControlSet\Services\zapret" /v zapret-zapret2-by-player1545 2^>nul') do (
+        echo Config file: %%B
+    )
+) else (
+    call :PrintRed "[X] Startup shortcut NOT found"
 )
 
-call :test_service zapret
-call :test_service WinDivert
 echo:
 
-tasklist /FI "IMAGENAME eq winws.exe" | find /I "winws.exe" > nul
+:: Check WinDivert driver
+set "BIN_PATH=%~dp0bin\"
+if exist "%BIN_PATH%\WinDivert64.sys" (
+    call :PrintGreen "[OK] WinDivert64.sys found"
+) else (
+    call :PrintRed "[X] WinDivert64.sys NOT found"
+)
+
+echo:
+
+:: Check winws2.exe process
 tasklist /FI "IMAGENAME eq winws2.exe" | find /I "winws2.exe" > nul
 if !errorlevel!==0 (
-    call :PrintGreen "Bypass (winws.exe) is ACTIVE"
-    call :PrintGreen "Bypass (winws2.exe) is ACTIVE"
+    call :PrintGreen "[OK] Bypass (winws2.exe) is RUNNING"
 ) else (
-    call :PrintRed "Bypass (winws.exe) NOT FOUND"
-    call :PrintRed "Bypass (winws2.exe) NOT FOUND"
+    call :PrintYellow "[!] Bypass (winws2.exe) is NOT running"
+    echo This is normal if you haven't logged in yet or just started Windows
+)
+
+echo:
+
+:: Check WinDivert service
+sc query "WinDivert" | findstr /I "RUNNING" > nul
+if !errorlevel!==0 (
+    call :PrintGreen "[OK] WinDivert service is active"
+) else (
+    call :PrintYellow "[!] WinDivert service status unknown"
 )
 
 pause
@@ -123,29 +214,55 @@ if "%ServiceStatus%"=="RUNNING" (
 exit /b
 
 
+
+
+:cleanup_windivert
+for %%s in (WinDivert WinDivert14 Monkey Monkey14) do (
+    %SYS32%\sc.exe query "%%s" >nul 2>&1
+    if !errorlevel!==0 (
+        %SYS32%\net.exe stop "%%s" >nul 2>&1
+        %SYS32%\sc.exe delete "%%s" >nul 2>&1
+    )
+)
+exit /b
+
 :: REMOVE ==============================
 :service_remove
 cls
 chcp 65001 > nul
 
-set SRVCNAME=zapret
-sc query "!SRVCNAME!" >nul 2>&1
-if !errorlevel!==0 (
-    net stop %SRVCNAME%
-    sc delete %SRVCNAME%
+:: Get Startup folder path
+for %%A in ("%APPDATA%") do set "STARTUP_PATH=%%~A\Microsoft\Windows\Start Menu\Programs\Startup"
+
+set "shortcutName=Zapret2_Startup.lnk"
+set "shortcutPath=!STARTUP_PATH!\!shortcutName!"
+
+:: Remove shortcut
+if exist "!shortcutPath!" (
+    del /f /q "!shortcutPath!"
+    if !errorlevel!==0 (
+        call :PrintGreen "Startup shortcut removed successfully"
+    ) else (
+        call :PrintRed "Failed to delete shortcut"
+    )
 ) else (
-    echo Service "%SRVCNAME%" is not installed.
+    call :PrintYellow "No startup shortcut found"
 )
 
-tasklist /FI "IMAGENAME eq winws.exe" | find /I "winws.exe" > nul
-if !errorlevel!==0 (
-    taskkill /IM winws.exe /F > nul
-)
-
+:: Stop any running winws2.exe processes
 tasklist /FI "IMAGENAME eq winws2.exe" | find /I "winws2.exe" > nul
 if !errorlevel!==0 (
-    taskkill /IM winws2.exe /F > nul
+    echo Stopping winws2.exe processes...
+    taskkill /IM winws2.exe /F > nul 2>&1
+    if !errorlevel!==0 (
+        call :PrintGreen "winws2.exe stopped"
+    ) else (
+        call :PrintYellow "No winws2.exe processes found"
+    )
 )
+
+:: Clean up registry
+reg delete "HKLM\System\CurrentControlSet\Services\zapret" /v zapret-zapret2-by-player1545 /f >nul 2>&1
 
 sc query "WinDivert" >nul 2>&1
 if !errorlevel!==0 (
@@ -162,34 +279,37 @@ sc delete "WinDivert14" >nul 2>&1
 pause
 goto menu
 
-
 :: INSTALL =============================
 :service_install
 cls
-chcp 65001 > nul
-
+chcp 437 > nul
 :: Main
 cd /d "%~dp0"
 set "BIN_PATH=%~dp0bin\"
 set "LISTS_PATH=%~dp0lists\"
+set "LUA_PATH=%~dp0lua\"
+set "WDFILTER_PATH=%~dp0windivert.filter\"
+
+:: Get Startup folder path
+for %%A in ("%APPDATA%") do set "STARTUP_PATH=%%~A\Microsoft\Windows\Start Menu\Programs\Startup"
 
 :: Searching for .bat files in current folder, except files that start with "service"
 echo Pick one of the options:
 set "count=0"
-for %%f in (*.bat) do (
-    set "filename=%%~nxf"
-    if /i not "!filename:~0,7!"=="service" (
-        set /a count+=1
-        echo !count!. %%f
-        set "file!count!=%%f"
-    )
+for /f "delims=" %%F in ('powershell -NoProfile -Command "Get-ChildItem -LiteralPath '.' -Filter '*.bat' | Where-Object { $_.Name -notlike 'service*' } | Sort-Object { [Regex]::Replace($_.Name, '(\d+)', { $args[0].Value.PadLeft(8, '0') }) } | ForEach-Object { $_.Name }"') do (
+    set /a count+=1
+    echo !count!. %%F
+    set "file!count!=%%F"
 )
 
 :: Choosing file
 set "choice="
 set /p "choice=Input file index (number): "
-if "!choice!"=="" goto :eof
-
+if "!choice!"=="" (
+    echo The choice is empty, exiting...
+    pause
+    goto menu
+)
 set "selectedFile=!file%choice%!"
 if not defined selectedFile (
     echo Invalid choice, exiting...
@@ -197,107 +317,57 @@ if not defined selectedFile (
     goto menu
 )
 
-:: Args that should be followed by value
-set "args_with_value=sni host altorder"
+:: Create shortcut in Startup folder
+set "shortcutName=Zapret2_Startup.lnk"
+set "shortcutPath=!STARTUP_PATH!\!shortcutName!"
+set "targetPath=%~dp0!selectedFile!"
 
-:: Parsing args (mergeargs: 2=start param|3=arg with value|1=params args|0=default)
-set "args="
-set "capture=0"
-set "mergeargs=0"
-set QUOTE="
-
-for /f "tokens=*" %%a in ('type "!selectedFile!"') do (
-    set "line=%%a"
-    call set "line=%%line:^!=EXCL_MARK%%"
-
-    echo !line! | findstr /i "%BIN%winws.exe" >nul
-    if not errorlevel 1 (
-        set "capture=1"
-    )
-
-    if !capture!==1 (
-        if not defined args (
-            set "line=!line:*%BIN%winws.exe"=!"
-        )
-
-        set "temp_args="
-        for %%i in (!line!) do (
-            set "arg=%%i"
-
-            if not "!arg!"=="^" (
-                if "!arg:~0,2!" EQU "--" if not !mergeargs!==0 (
-                    set "mergeargs=0"
-                )
-
-                if "!arg:~0,1!" EQU "!QUOTE!" (
-                    set "arg=!arg:~1,-1!"
-
-                    echo !arg! | findstr ":" >nul
-                    if !errorlevel!==0 (
-                        set "arg=\!QUOTE!!arg!\!QUOTE!"
-                    ) else if "!arg:~0,1!"=="@" (
-                        set "arg=\!QUOTE!@%~dp0!arg:~1!\!QUOTE!"
-                    ) else if "!arg:~0,5!"=="%%BIN%%" (
-                        set "arg=\!QUOTE!!BIN_PATH!!arg:~5!\!QUOTE!"
-                    ) else if "!arg:~0,7!"=="%%LISTS%%" (
-                        set "arg=\!QUOTE!!LISTS_PATH!!arg:~7!\!QUOTE!"
-                    ) else (
-                        set "arg=\!QUOTE!%~dp0!arg!\!QUOTE!"
-                    )
-                ) else if "!arg:~0,12!" EQU "%%GameFilter%%" (
-                    set "arg=%GameFilter%"
-                )
-
-                if !mergeargs!==1 (
-                    set "temp_args=!temp_args!,!arg!"
-                ) else if !mergeargs!==3 (
-                    set "temp_args=!temp_args!=!arg!"
-                    set "mergeargs=1"
-                ) else (
-                    set "temp_args=!temp_args! !arg!"
-                )
-
-                if "!arg:~0,2!" EQU "--" (
-                    set "mergeargs=2"
-                ) else if !mergeargs! GEQ 1 (
-                    if !mergeargs!==2 set "mergeargs=1"
-
-                    for %%x in (!args_with_value!) do (
-                        if /i "%%x"=="!arg!" (
-                            set "mergeargs=3"
-                        )
-                    )
-                )
-            )
-        )
-
-        if not "!temp_args!"=="" (
-            set "args=!args! !temp_args!"
-        )
-    )
+:: Remove existing shortcut if present
+if exist "!shortcutPath!" (
+    del /f /q "!shortcutPath!"
 )
 
-:: Creating service with parsed args
-call :tcp_enable
+:: Create shortcut using PowerShell
+powershell -NoProfile -Command ^
+    "$WshShell = New-Object -ComObject WScript.Shell; " ^
+    "$Shortcut = $WshShell.CreateShortcut('!shortcutPath!'); " ^
+    "$Shortcut.TargetPath = '!targetPath!'; " ^
+    "$Shortcut.WorkingDirectory = '%~dp0'; " ^
+    "$Shortcut.WindowStyle = 7; " ^
+    "$Shortcut.Save()"
 
-set ARGS=%args%
-call set "ARGS=%%ARGS:EXCL_MARK=^!%%"
-echo Final args: !ARGS!
-set SRVCNAME=zapret
+if !errorlevel!==0 (
+    echo.
+    call :PrintGreen "Shortcut created successfully in Startup folder"
+    echo Shortcut path: !shortcutPath!
+) else (
+    echo.
+    call :PrintRed "Failed to create shortcut"
+    pause
+    goto menu
+)
 
-net stop %SRVCNAME% >nul 2>&1
-sc delete %SRVCNAME% >nul 2>&1
-sc create %SRVCNAME% binPath= "\"%BIN_PATH%winws.exe\" !ARGS!" DisplayName= "zapret" start= auto
-sc description %SRVCNAME% "Zapret DPI bypass software"
-sc start %SRVCNAME%
+:: Save config name to registry
 for %%F in ("!file%choice%!") do (
     set "filename=%%~nF"
 )
-reg add "HKLM\System\CurrentControlSet\Services\zapret" /v zapret-discord-youtube /t REG_SZ /d "!filename!" /f
+reg add "HKLM\System\CurrentControlSet\Services\zapret" /v zapret-zapret2-by-player1545 /t REG_SZ /d "!filename!" /f >nul 2>&1
 
+:: Enable TCP timestamps
+call :tcp_enable
+
+echo.
+echo ========================================
+echo   Startup shortcut installed!
+echo   Config: !selectedFile!
+echo   Location: !STARTUP_PATH!
+echo ========================================
+echo.
+echo The config will run automatically on Windows startup.
+echo Make sure to run service.bat as Administrator at least once.
+echo.
 pause
 goto menu
-
 
 :: CHECK UPDATES =======================
 :service_check_updates
@@ -307,10 +377,10 @@ cls
 :: Set current version and URLs
 set "GITHUB_VERSION_URL=https://raw.githubusercontent.com/Player1545/zapret-zapret2-by-player1545/main/.service/version.txt"
 set "GITHUB_RELEASE_URL=https://github.com/Player1545/zapret-zapret2-by-player1545/releases/tag/"
-set "GITHUB_DOWNLOAD_URL=https://github.com/Player1545/zapret-zapret2-by-player1545/releases/latest/download/zapret-zapret2-by-player1545-"
+set "GITHUB_DOWNLOAD_URL=https://github.com/Player1545/zapret-zapret2-by-player1545/releases/latest"
 
 :: Get the latest version from GitHub
-for /f "delims=" %%A in ('powershell -command "(Invoke-WebRequest -Uri \"%GITHUB_VERSION_URL%\" -Headers @{\"Cache-Control\"=\"no-cache\"} -TimeoutSec 5).Content.Trim()" 2^>nul') do set "GITHUB_VERSION=%%A"
+for /f "delims=" %%A in ('powershell -NoProfile -Command "(Invoke-WebRequest -Uri \"%GITHUB_VERSION_URL%\" -Headers @{\"Cache-Control\"=\"no-cache\"} -UseBasicParsing -TimeoutSec 5).Content.Trim()" 2^>nul') do set "GITHUB_VERSION=%%A"
 
 :: Error handling
 if not defined GITHUB_VERSION (
@@ -332,86 +402,15 @@ if "%LOCAL_VERSION%"=="%GITHUB_VERSION%" (
 echo New version available: %GITHUB_VERSION%
 echo Release page: %GITHUB_RELEASE_URL%%GITHUB_VERSION%
 
-set "CHOICE="
-set /p "CHOICE=Do you want to automatically download the new version? (Y/N) (default: Y) "
-if "%CHOICE%"=="" set "CHOICE=Y"
-if /i "%CHOICE%"=="y" set "CHOICE=Y"
-
-if /i "%CHOICE%"=="Y" (
-    echo Opening the download page...
-    start "" "%GITHUB_DOWNLOAD_URL%%GITHUB_VERSION%.rar"
-)
+echo Opening the download page...
+start "" "%GITHUB_DOWNLOAD_URL%"
 
 
 if "%1"=="soft" exit 
 pause
 goto menu
 
-:: HOSTS UPDATE =======================
-:hosts_update
-chcp 437 > nul
-cls
 
-set "hostsFile=%SystemRoot%\System32\drivers\etc\hosts"
-set "hostsUrl=https://raw.githubusercontent.com/Player1545/zapret-zapret2-by-player1545/refs/heads/main/.service/hosts"
-set "tempFile=%TEMP%\zapret_hosts.txt"
-set "needsUpdate=0"
-
-echo Checking hosts file...
-
-if exist "%SystemRoot%\System32\curl.exe" (
-    curl -L -s -o "%tempFile%" "%hostsUrl%"
-) else (
-    powershell -NoProfile -Command ^
-        "$url = '%hostsUrl%';" ^
-        "$out = '%tempFile%';" ^
-        "$res = Invoke-WebRequest -Uri $url -TimeoutSec 10 -UseBasicParsing;" ^
-        "if ($res.StatusCode -eq 200) { $res.Content | Out-File -FilePath $out -Encoding UTF8 } else { exit 1 }"
-)
-
-if not exist "%tempFile%" (
-    call :PrintRed "Failed to download hosts file from repository"
-    call :PrintYellow "Copy hosts file manually from %hostsUrl%"
-    pause
-    goto menu
-)
-
-set "firstLine="
-set "lastLine="
-for /f "usebackq delims=" %%a in ("%tempFile%") do (
-    if not defined firstLine (
-        set "firstLine=%%a"
-    )
-    set "lastLine=%%a"
-)
-
-findstr /C:"!firstLine!" "%hostsFile%" >nul 2>&1
-if !errorlevel! neq 0 (
-    echo First line from repository not found in hosts file
-    set "needsUpdate=1"
-)
-
-findstr /C:"!lastLine!" "%hostsFile%" >nul 2>&1
-if !errorlevel! neq 0 (
-    echo Last line from repository not found in hosts file
-    set "needsUpdate=1"
-)
-
-if "%needsUpdate%"=="1" (
-    echo:
-    call :PrintYellow "Hosts file needs to be updated"
-    call :PrintYellow "Please manually copy the content from the downloaded file to your hosts file"
-    
-    start notepad "%tempFile%"
-    explorer /select,"%hostsFile%"
-) else (
-    call :PrintGreen "Hosts file is up to date"
-    if exist "%tempFile%" del /f /q "%tempFile%"
-)
-
-echo:
-pause
-goto menu
 
 :: DIAGNOSTICS =========================
 :service_diagnostics
@@ -522,10 +521,25 @@ if !errorlevel!==0 (
 )
 echo:
 
+:: WinDivert64.sys file
+set "BIN_PATH=%~dp0bin\"
+if not exist "%BIN_PATH%\*.sys" (
+    call :PrintRed "WinDivert64.sys file NOT found."
+    echo:
+)
+
 :: VPN
+set "VPN_SERVICES="
 sc query | findstr /I "VPN" > nul
 if !errorlevel!==0 (
-    call :PrintYellow "[?] Some VPN services found. Some VPNs can conflict with zapret"
+    for /f "tokens=2 delims=:" %%A in ('sc query ^| findstr /I "VPN"') do (
+        if not defined VPN_SERVICES (
+            set "VPN_SERVICES=!VPN_SERVICES!%%A"
+        ) else (
+            set "VPN_SERVICES=!VPN_SERVICES!,%%A"
+        )
+    )
+    call :PrintYellow "[?] VPN services found:!VPN_SERVICES!. Some VPNs can conflict with zapret"
     call :PrintYellow "Make sure that all VPNs are disabled"
 ) else (
     call :PrintGreen "VPN check passed"
@@ -534,7 +548,7 @@ echo:
 
 :: DNS
 set "dohfound=0"
-for /f "delims=" %%a in ('powershell -Command "Get-ChildItem -Recurse -Path 'HKLM:System\CurrentControlSet\Services\Dnscache\InterfaceSpecificParameters\' | Get-ItemProperty | Where-Object { $_.DohFlags -gt 0 } | Measure-Object | Select-Object -ExpandProperty Count"') do (
+for /f "delims=" %%a in ('powershell -NoProfile -Command "Get-ChildItem -Recurse -Path 'HKLM:System\CurrentControlSet\Services\Dnscache\InterfaceSpecificParameters\' | Get-ItemProperty | Where-Object { $_.DohFlags -gt 0 } | Measure-Object | Select-Object -ExpandProperty Count"') do (
     if %%a gtr 0 (
         set "dohfound=1"
     )
@@ -547,18 +561,26 @@ if !dohfound!==0 (
 )
 echo:
 
-:: WinDivert conflict
-tasklist /FI "IMAGENAME eq winws.exe" | find /I "winws.exe" > nul
-set "winws_running=!errorlevel!"
+:: Hosts file check
+set "hostsFile=%SystemRoot%\System32\drivers\etc\hosts"
+if exist "%hostsFile%" (
+    set "yt_found=0"
+    >nul 2>&1 findstr /I "youtube.com" "%hostsFile%" && set "yt_found=1"
+    >nul 2>&1 findstr /I "yotou.be" "%hostsFile%" && set "yt_found=1"
+    if !yt_found!==1 (
+        call :PrintYellow "[?] Your hosts file contains entries for youtube.com or yotou.be. This may cause problems with YouTube access"
+    )
+)
 
+:: WinDivert conflict
 tasklist /FI "IMAGENAME eq winws2.exe" | find /I "winws2.exe" > nul
-set "winws2_running=!errorlevel!"
+set "winws_running=!errorlevel!"
 
 sc query "WinDivert" | findstr /I "RUNNING STOP_PENDING" > nul
 set "windivert_running=!errorlevel!"
 
 if !winws_running! neq 0 if !windivert_running!==0 (
-    call :PrintYellow "[?] winws.exe is not running but WinDivert service is active. Attempting to delete WinDivert..."
+    call :PrintYellow "[?] winws2.exe is not running but WinDivert service is active. Attempting to delete WinDivert..."
     
     net stop "WinDivert" >nul 2>&1
     sc delete "WinDivert" >nul 2>&1
@@ -695,14 +717,36 @@ goto menu
 :game_switch_status
 chcp 437 > nul
 
-set "gameFlagFile=%~dp0bin\game_filter.enabled"
+set "gameFlagFile=%~dp0utils\game_filter.enabled"
 
-if exist "%gameFlagFile%" (
-    set "GameFilterStatus=enabled"
-    set "GameFilter=1024-65535"
-) else (
+if not exist "%gameFlagFile%" (
     set "GameFilterStatus=disabled"
     set "GameFilter=12"
+    set "GameFilterTCP=12"
+    set "GameFilterUDP=12"
+    exit /b
+)
+
+set "GameFilterMode="
+for /f "usebackq delims=" %%A in ("%gameFlagFile%") do (
+    if not defined GameFilterMode set "GameFilterMode=%%A"
+)
+
+if /i "%GameFilterMode%"=="all" (
+    set "GameFilterStatus=enabled (TCP and UDP)"
+    set "GameFilter=1024-65535"
+    set "GameFilterTCP=1024-65535"
+    set "GameFilterUDP=1024-65535"
+) else if /i "%GameFilterMode%"=="tcp" (
+    set "GameFilterStatus=enabled (TCP)"
+    set "GameFilter=1024-65535"
+    set "GameFilterTCP=1024-65535"
+    set "GameFilterUDP=12"
+) else (
+    set "GameFilterStatus=enabled (UDP)"
+    set "GameFilter=1024-65535"
+    set "GameFilterTCP=12"
+    set "GameFilterUDP=1024-65535"
 )
 exit /b
 
@@ -711,14 +755,63 @@ exit /b
 chcp 437 > nul
 cls
 
-if not exist "%gameFlagFile%" (
-    echo Enabling game filter...
-    echo ENABLED > "%gameFlagFile%"
-    call :PrintYellow "Restart the zapret to apply the changes"
+echo Select game filter mode:
+echo   0. Disable
+echo   1. TCP and UDP
+echo   2. TCP only
+echo   3. UDP only
+echo.
+set "GameFilterChoice=0"
+set /p "GameFilterChoice=Select option (0-3, default: 0): "
+if %GameFilterChoice%=="" set "GameFilterChoice=0"
+
+if "%GameFilterChoice%"=="0" (
+    if exist "%gameFlagFile%" (
+        del /f /q "%gameFlagFile%"
+    ) else (
+        goto menu
+    )
+) else if "%GameFilterChoice%"=="1" (
+    echo all>"%gameFlagFile%"
+) else if "%GameFilterChoice%"=="2" (
+    echo tcp>"%gameFlagFile%"
+) else if "%GameFilterChoice%"=="3" (
+    echo udp>"%gameFlagFile%"
 ) else (
-    echo Disabling game filter...
-    del /f /q "%gameFlagFile%"
-    call :PrintYellow "Restart the zapret to apply the changes"
+    echo Invalid choice, exiting...
+    pause
+    goto menu
+)
+
+call :PrintYellow "Restart the zapret to apply the changes"
+pause
+goto menu
+
+
+:: CHECK UPDATES SWITCH =================
+:check_updates_switch_status
+chcp 437 > nul
+
+set "checkUpdatesFlag=%~dp0utils\check_updates.enabled"
+
+if exist "%checkUpdatesFlag%" (
+    set "CheckUpdatesStatus=enabled"
+) else (
+    set "CheckUpdatesStatus=disabled"
+)
+exit /b
+
+
+:check_updates_switch
+chcp 437 > nul
+cls
+
+if not exist "%checkUpdatesFlag%" (
+    echo Enabling check updates...
+    echo ENABLED > "%checkUpdatesFlag%"
+) else (
+    echo Disabling check updates...
+    del /f /q "%checkUpdatesFlag%"
 )
 
 pause
@@ -804,7 +897,7 @@ echo Updating ipset-all...
 if exist "%SystemRoot%\System32\curl.exe" (
     curl -L -o "%listFile%" "%url%"
 ) else (
-    powershell -Command ^
+    powershell -NoProfile -Command ^
         "$url = '%url%';" ^
         "$out = '%listFile%';" ^
         "$dir = Split-Path -Parent $out;" ^
@@ -818,17 +911,128 @@ echo Finished
 pause
 goto menu
 
+
+:: HOSTS UPDATE =======================
+:hosts_update
+chcp 437 > nul
+cls
+
+set "hostsFile=%SystemRoot%\System32\drivers\etc\hosts"
+set "hostsUrl=https://raw.githubusercontent.com/Player1545/zapret-zapret2-by-player1545/refs/heads/main/.service/hosts"
+set "tempFile=%TEMP%\zapret_hosts.txt"
+set "needsUpdate=0"
+
+echo Checking hosts file...
+
+if exist "%SystemRoot%\System32\curl.exe" (
+    curl -L -s -o "%tempFile%" "%hostsUrl%"
+) else (
+    powershell -NoProfile -Command ^
+        "$url = '%hostsUrl%';" ^
+        "$out = '%tempFile%';" ^
+        "$res = Invoke-WebRequest -Uri $url -TimeoutSec 10 -UseBasicParsing;" ^
+        "if ($res.StatusCode -eq 200) { $res.Content | Out-File -FilePath $out -Encoding UTF8 } else { exit 1 }"
+)
+
+if not exist "%tempFile%" (
+    call :PrintRed "Failed to download hosts file from repository"
+    call :PrintYellow "Copy hosts file manually from %hostsUrl%"
+    pause
+    goto menu
+)
+
+set "firstLine="
+set "lastLine="
+for /f "usebackq delims=" %%a in ("%tempFile%") do (
+    if not defined firstLine (
+        set "firstLine=%%a"
+    )
+    set "lastLine=%%a"
+)
+
+findstr /C:"!firstLine!" "%hostsFile%" >nul 2>&1
+if !errorlevel! neq 0 (
+    echo First line from repository not found in hosts file
+    set "needsUpdate=1"
+)
+
+findstr /C:"!lastLine!" "%hostsFile%" >nul 2>&1
+if !errorlevel! neq 0 (
+    echo Last line from repository not found in hosts file
+    set "needsUpdate=1"
+)
+
+if "%needsUpdate%"=="1" (
+    echo:
+    call :PrintYellow "Hosts file needs to be updated"
+    call :PrintYellow "Please manually copy the content from the downloaded file to your hosts file"
+    
+    start notepad "%tempFile%"
+    explorer /select,"%hostsFile%"
+) else (
+    call :PrintGreen "Hosts file is up to date"
+    if exist "%tempFile%" del /f /q "%tempFile%"
+)
+
+echo:
+pause
+goto menu
+
+
+:: RUN TESTS =============================
+:run_tests
+chcp 437 >nul
+cls
+
+:: Require PowerShell 3.0+
+powershell -NoProfile -Command "if ($PSVersionTable -and $PSVersionTable.PSVersion -and $PSVersionTable.PSVersion.Major -ge 3) { exit 0 } else { exit 1 }" >nul 2>&1
+if %errorLevel% neq 0 (
+    echo PowerShell 3.0 or newer is required.
+    echo Please upgrade PowerShell and rerun this script.
+    echo.
+    pause
+    goto menu
+)
+
+echo Starting configuration tests in PowerShell window...
+echo.
+start "" powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0utils\test zapret.ps1"
+pause
+goto menu
+
+
 :: Utility functions
 
 :PrintGreen
-powershell -Command "Write-Host \"%~1\" -ForegroundColor Green"
+powershell -NoProfile -Command "Write-Host \"%~1\" -ForegroundColor Green"
 exit /b
 
 :PrintRed
-powershell -Command "Write-Host \"%~1\" -ForegroundColor Red"
+powershell -NoProfile -Command "Write-Host \"%~1\" -ForegroundColor Red"
 exit /b
 
 :PrintYellow
-powershell -Command "Write-Host \"%~1\" -ForegroundColor Yellow"
+powershell -NoProfile -Command "Write-Host \"%~1\" -ForegroundColor Yellow"
 exit /b
 
+:check_command
+where %1 >nul 2>&1
+if %errorLevel% neq 0 (
+    echo [ERROR] %1 not found in PATH
+    echo Fix your PATH variable with instructions here https://github.com/Flowseal/zapret-discord-youtube/issues/7490
+    pause
+    exit /b 1
+)
+exit /b 0
+
+:check_extracted
+set "extracted=1"
+
+if not exist "%~dp0bin\" set "extracted=0"
+
+if "%extracted%"=="0" (
+    echo Zapret must be extracted from archive first or bin folder not found for some reason
+    pause
+    exit
+)
+exit /b 0
