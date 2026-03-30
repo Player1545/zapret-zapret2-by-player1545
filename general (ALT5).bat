@@ -1,7 +1,7 @@
-:: NOT RECOMMENDED
 @echo off
 chcp 65001 > nul
 :: 65001 - UTF-8
+:: NOT RECOMMENDED
 
 cd /d "%~dp0"
 ::call service.bat status_zapret
@@ -24,13 +24,13 @@ start "zapret2: %~n0" /min "%BIN%winws2.exe" --debug=0 --ctrack-disable=0 --ipca
 --lua-init=@"%LUA%zapret-auto.lua" ^
 --lua-init=@"%LUA%zapret-multishake.lua" ^
 
---blob=tls_google:@"%BIN%tls_clienthello_www_google_com.bin" ^
 --blob=quic_google:@"%BIN%quic_initial_www_google_com.bin" ^
---blob=quic_7:@"%BIN%quic_7.bin" ^
---blob=tls11:@"%BIN%tls_clienthello_11.bin" ^
+--blob=tls_google:@"%BIN%tls_clienthello_www_google_com.bin" ^
+--blob=tls_4pda:@"%BIN%tls_clienthello_4pda_to.bin" ^
 
---filter-udp=443 --hostlist="%LISTS%list-general.txt" --hostlist="%LISTS%list-general-user.txt" --hostlist-exclude="%LISTS%list-exclude.txt" --hostlist-exclude="%LISTS%list-exclude-user.txt" --ipset-exclude="%LISTS%ipset-exclude.txt" --ipset-exclude="%LISTS%ipset-exclude-user.txt" --lua-desync=fake:blob=quic_7:repeats=8 --new ^
---filter-udp=443 --filter-l7=quic --ipset="%LISTS%ipset-all.txt" --ipset-exclude="%LISTS%ipset-exclude.txt" --ipset-exclude="%LISTS%ipset-exclude-user.txt" --lua-desync=fake:blob=quic_7:repeats=8 --new ^
---filter-l3=ipv4 --filter-tcp=80,443,%GameFilterTCP% --hostlist-exclude="%LISTS%list-exclude.txt" --hostlist-exclude="%LISTS%list-exclude-user.txt" --ipset-exclude="%LISTS%ipset-exclude.txt" --lua-desync=hostfakesplit_stealth:mode=random:midhost=3:host=google.com:tcp_md5:tcp_ts_up:repeats=6 --lua-desync=syndata:blob=tls11:repeats=3 --new ^
---filter-udp=19294-19344,50000-50100 --filter-l7=discord,stun --payload=stun,discord_ip_discovery --lua-desync=fake:blob=quic_7:repeats=8 --new ^
---filter-udp=%GameFilterUDP% --ipset="%LISTS%ipset-all.txt" --ipset-exclude="%LISTS%ipset-exclude.txt" --ipset-exclude="%LISTS%ipset-exclude-user.txt" --out-range=-n9 --payload=all --lua-desync=fake:blob=quic_google:repeats=10:payload=all
+--filter-udp=443 --hostlist="%LISTS%list-general.txt" --hostlist="%LISTS%list-general-user.txt" --hostlist-exclude="%LISTS%list-exclude.txt" --hostlist-exclude="%LISTS%list-exclude-user.txt" --ipset-exclude="%LISTS%ipset-exclude.txt" --ipset-exclude="%LISTS%ipset-exclude-user.txt" --lua-desync=fake:blob=quic_google:repeats=6:payload=quic_initial --new ^
+--filter-udp=19294-19344,50000-50100 --filter-l7=discord,stun --lua-desync=fake:blob=quic_google:repeats=6 --new ^
+--filter-l3=ipv4 --filter-tcp=80,443,2053,2083,2087,2096,8443 --ipset-exclude="%LISTS%ipset-exclude.txt" --ipset-exclude="%LISTS%ipset-exclude-user.txt" --lua-desync=syndata --lua-desync=multidisorder:pos=2 --new ^
+--filter-udp=443 --ipset="%LISTS%ipset-all.txt" --hostlist-exclude="%LISTS%list-exclude.txt" --hostlist-exclude="%LISTS%list-exclude-user.txt" --ipset-exclude="%LISTS%ipset-exclude.txt" --ipset-exclude="%LISTS%ipset-exclude-user.txt" --lua-desync=fake:blob=quic_google:repeats=6:payload=quic_initial --new ^
+--filter-tcp=%GameFilterTCP% --ipset="%LISTS%ipset-all.txt" --ipset-exclude="%LISTS%ipset-exclude.txt" --ipset-exclude="%LISTS%ipset-exclude-user.txt" --out-range=-n4 --payload=all --lua-desync=fake:blob=tls_google:repeats=6:tcp_seq=1000 --lua-desync=multisplit:pos=2 --new ^
+--filter-udp=%GameFilterUDP% --ipset="%LISTS%ipset-all.txt" --ipset-exclude="%LISTS%ipset-exclude.txt" --ipset-exclude="%LISTS%ipset-exclude-user.txt" --out-range=-n3 --payload=all --lua-desync=fake:blob=quic_google:repeats=14:payload=all
