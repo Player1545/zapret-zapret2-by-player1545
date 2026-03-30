@@ -21,4 +21,5 @@ yt-video-upload.l.google.com
 wide-youtube.l.google.com
 play.google.com
 accounts.google.com
+googlevideo.com
 ytimg.l.google.com
