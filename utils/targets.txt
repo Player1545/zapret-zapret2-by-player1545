@@ -1,0 +1,59 @@
+# targets.txt - endpoint list for zapret.ps1 tests
+#
+# Format:
+#   KeyName = "https://host..."   -> Runs HTTP/TLS checks + ping
+#   KeyName = "PING:1.2.3.4"       -> Ping only
+#
+# Keys must be a single word (letters/digits/underscore), because the
+# script parses them as simple identifiers. You can add or remove lines.
+
+### Discord
+DiscordMain           = "https://discord.com"
+DiscordGateway        = "https://gateway.discord.gg"
+DiscordCDN            = "https://cdn.discordapp.com"
+DiscordUpdates        = "https://updates.discord.com"
+
+### YouTube
+YouTubeWeb            = "https://www.youtube.com"
+YouTubeShort          = "https://youtu.be"
+YouTubeImage          = "https://i.ytimg.com"
+YouTubeVideoRedirect  = "https://redirector.googlevideo.com"
+
+### Google
+GoogleMain            = "https://www.google.com"
+GoogleGstatic         = "https://www.gstatic.com"
+GoogleVideo           = "http://googlevideo.com"
+
+### Cloudflare
+CloudflareWeb         = "https://www.cloudflare.com"
+CloudflareCDN         = "https://cdnjs.cloudflare.com"
+
+### Roblox
+Roblox         	      = "https://www.roblox.com"
+RobloxCDN             = "https://tr.rbxcdn.com"
+RobloxAPIS            = "https://apis.roblox.com"
+
+### Twitch
+TwitchMain = "https://www.twitch.tv"
+TwitchCDN1 = "https://8218525761b0.j.cloudfront.hls.ttvnw.net"
+TwitchCDN2 = "https://k.twitchcdn.net"
+
+### Other
+Github                = "https://github.com"
+Modrinth              = "https://modrinth.com"
+ItchIo                = "https://itch.io"
+Gamebanana            = "https://gamebanana.com"
+Telegram              = "https://telegram.org"
+TelegramWeb           = "https://web.telegram.org"
+RuTracker             = "https://rutracker.org"
+Steam                 = "https://store.steampowered.com"
+7tv                   = "https://7tv.app"
+7tvAPI                = "https://7tv.io"
+X                     = "https://x.com"
+
+### Public DNS (PING-only)
+CloudflareDNS1111     = "PING:1.1.1.1"
+CloudflareDNS1001     = "PING:1.0.0.1"
+GoogleDNS8888         = "PING:8.8.8.8"
+GoogleDNS8844         = "PING:8.8.4.4"
+Quad9DNS9999          = "PING:9.9.9.9"
