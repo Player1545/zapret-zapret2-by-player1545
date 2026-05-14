@@ -30,6 +30,7 @@ start "zapret2: %~n0" /min "%BIN%winws2.exe" --debug=0 --ctrack-disable=0 --ipca
 --blob=quic_dbankcloud:@"%BIN%quic_initial_dbankcloud_ru.bin" ^
 --blob=quic_3:@"%BIN%quic_3.bin" ^
 --blob=stun:@"%BIN%stun.bin" ^
+--blob=tls_10:@"%BIN%tls_clienthello_10.bin" ^
 
 --filter-udp=443 --hostlist="%LISTS%list-general.txt" --hostlist="%LISTS%list-general-user.txt" --hostlist-exclude="%LISTS%list-exclude.txt" --hostlist-exclude="%LISTS%list-exclude-user.txt" --ipset-exclude="%LISTS%ipset-exclude.txt" --ipset-exclude="%LISTS%ipset-exclude-user.txt" --lua-desync=fake:blob=quic_3:repeats=6:payload=quic_initial --new ^
 --filter-udp=19294-19344,50000-50100 --filter-l7=discord,stun --lua-desync=fake:blob=quic_3:repeats=6 --new ^
