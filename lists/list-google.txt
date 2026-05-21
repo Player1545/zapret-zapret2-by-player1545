@@ -23,3 +23,4 @@ play.google.com
 accounts.google.com
 googlevideo.com
 ytimg.l.google.com
+google.ru
