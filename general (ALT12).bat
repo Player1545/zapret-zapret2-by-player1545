@@ -23,7 +23,6 @@ start "zapret2: %~n0" /min "%BIN%winws2.exe" --debug=0 --ctrack-disable=0 --ipca
 --lua-init=@"%LUA%zapret-auto.lua" ^
 --lua-init=@"%LUA%zapret-multishake.lua" ^
 
---blob=quic_google:@"%BIN%quic_initial_www_google_com.bin" ^
 --blob=quic_vk:@"%BIN%quic_initial_vk_com.bin" ^
 
 --filter-udp=443 --hostlist="%LISTS%list-general.txt" --hostlist="%LISTS%list-general-user.txt" --hostlist-exclude="%LISTS%list-exclude.txt" --hostlist-exclude="%LISTS%list-exclude-user.txt" --ipset-exclude="%LISTS%ipset-exclude.txt" --ipset-exclude="%LISTS%ipset-exclude-user.txt" --lua-desync=fake:blob=quic_vk:repeats=6 --new ^
