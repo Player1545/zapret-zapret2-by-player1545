@@ -88,7 +88,7 @@ zapret-zapret2-by-player1545
 
 **UPD 15.02.2026:** найден способ оживить **веб-версию** Telegram:
 
-1. Скачайте версию **1.4** репозитория.
+1. Скачайте [**последнюю**](https://github.com/Player1545/zapret-zapret2-by-player1545/releases/latest) версию репозитория.
 2. В `service.bat` введите `8`.
 3. Дополните файл `Hosts` согласно инструкции.
 
