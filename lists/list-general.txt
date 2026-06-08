@@ -49,3 +49,4 @@ klipy.com
 x.com
 modrinth.com
 itch.io
+pypi.org
