@@ -1,0 +1,8 @@
+twitch.tv
+www.twitch.tv
+jtvnw.net
+twitchcdn.net
+ext-twitch.tv
+twitch.map.fastly.net
+live-video.net
+ttvnw.net
